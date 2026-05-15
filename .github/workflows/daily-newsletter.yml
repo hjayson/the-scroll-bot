@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,7 +28,23 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check env vars
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          GHL_USER_ID: ${{ secrets.GHL_USER_ID }}
+        run: |
+          echo "ANTHROPIC_API_KEY set: $([[ -n "$ANTHROPIC_API_KEY" ]] && echo YES || echo NO)"
+          echo "SERPER_API_KEY set: $([[ -n "$SERPER_API_KEY" ]] && echo YES || echo NO)"
+          echo "GHL_API_KEY set: $([[ -n "$GHL_API_KEY" ]] && echo YES || echo NO)"
+          echo "GHL_LOCATION_ID set: $([[ -n "$GHL_LOCATION_ID" ]] && echo YES || echo NO)"
+          echo "GHL_USER_ID set: $([[ -n "$GHL_USER_ID" ]] && echo YES || echo NO)"
+
       - name: Run newsletter bot
+        id: run_bot
+        continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
@@ -36,4 +54,18 @@ jobs:
           FROM_NAME: "Jayson | The Scroll"
           FROM_EMAIL: "jayson@salesfunnelmarketing.us"
           NEWSLETTER_FORM_ID: "H3x8RB2QY1aofmWEVw00"
-        run: python -u newsletter_bot.py
+        run: python -u newsletter_bot.py 2>&1 | tee /tmp/bot_output.txt; exit ${PIPESTATUS[0]}
+
+      - name: Save run output to repo
+        if: always()
+        run: |
+          cp /tmp/bot_output.txt last_run_output.txt 2>/dev/null || echo "Bot did not produce output" > last_run_output.txt
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add last_run_output.txt
+          git diff --staged --quiet || git commit -m "debug: save last run output [skip ci]"
+          git push
+
+      - name: Fail if bot failed
+        if: steps.run_bot.outcome == 'failure'
+        run: exit 1
