@@ -4,7 +4,12 @@ on:
   schedule:
     # 6:05 AM Eastern (10:05 UTC) — Mon through Fri
     - cron: '5 10 * * 1-5'
-  workflow_dispatch:  # allows manual "Run workflow" button in GitHub UI
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: 'Test mode — send only to this email (leave blank for all subscribers)'
+        required: false
+        default: ''
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -36,4 +41,5 @@ jobs:
           FROM_NAME: "Jayson | The Scroll"
           FROM_EMAIL: "jayson@salesfunnelmarketing.us"
           NEWSLETTER_FORM_ID: "H3x8RB2QY1aofmWEVw00"
+          TEST_EMAIL: ${{ github.event.inputs.test_email }}
         run: python -u newsletter_bot.py
