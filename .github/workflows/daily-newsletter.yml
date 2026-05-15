@@ -1,32 +1,32 @@
-name: Daily Newsletter
+name: The Scroll — Daily Newsletter
 
 on:
   schedule:
+    # 6:05 AM Eastern (10:05 UTC) — Mon through Fri
     - cron: '5 10 * * 1-5'
-  workflow_dispatch:
+  workflow_dispatch:  # allows manual "Run workflow" button in GitHub UI
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  send:
+  send-newsletter:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - name: Diagnose environment
-        run: python -u diagnose.py
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
-          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
-          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
-          GHL_USER_ID: ${{ secrets.GHL_USER_ID }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Run newsletter bot
-        run: python -u run_newsletter.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
@@ -35,3 +35,5 @@ jobs:
           GHL_USER_ID: ${{ secrets.GHL_USER_ID }}
           FROM_NAME: "Jayson | The Scroll"
           FROM_EMAIL: "jayson@salesfunnelmarketing.us"
+          NEWSLETTER_FORM_ID: "H3x8RB2QY1aofmWEVw00"
+        run: python -u newsletter_bot.py
